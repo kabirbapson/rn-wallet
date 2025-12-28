@@ -1,4 +1,4 @@
-import * as React from 'react'
+import {useState} from 'react'
 import { Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { useSignUp } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
@@ -9,11 +9,11 @@ export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp()
   const router = useRouter()
 
-  const [emailAddress, setEmailAddress] = React.useState('')
-  const [password, setPassword] = React.useState('')
-  const [pendingVerification, setPendingVerification] = React.useState(false)
-  const [code, setCode] = React.useState('')
-
+  const [emailAddress, setEmailAddress] = useState('')
+  const [password, setPassword] = useState('')
+  const [pendingVerification, setPendingVerification] = useState(false)
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
   // Handle submission of sign-up form
   const onSignUpPress = async () => {
     if (!isLoaded) return
@@ -74,12 +74,12 @@ export default function SignUpScreen() {
         <View style={styles.errorBox}>
           <Ionicons name='alert-circle' size={20} color={COLORS.expense} />
           <Text style={styles.errorText}>Something not right</Text>
-          <TouchableOpacity>
-
+          <TouchableOpacity onPress={()=> setError("")}>
+            <Ionicons name='close' color={COLORS.textLight} />
           </TouchableOpacity>
         </View> 
         : null}
-        <TextInput style={styles.verificationInput}
+        <TextInput style={[styles.verificationInput, error && styles.errorInput]}
           value={code}
           placeholder="Enter your verification code"
           onChangeText={(code) => setCode(code)}
