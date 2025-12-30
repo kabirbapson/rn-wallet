@@ -1,31 +1,141 @@
 import express from "express";
-import dotenv from 'dotenv'
-// import { sql } from "./config/db";
+import dotenv from "dotenv";
+import { sql } from "./config/db.js";
+// import sql from './config/db'
 
-dotenv.config()
+dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 5001;
+app.use(express.json());
 
-console.log('My Port:', process.env.PORT)
+async function initDB() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS transactions(
+       id SERIAL PRIMARY KEY,
+       user_id VARCHAR(255) NOT NULL,
+       title VARCHAR(255) NOT NULL,
+       amount decimal(10,2) NOT NULL,
+       category VARCHAR(255) NOT NULL,
+       created_at DATE NOT NULL DEFAULT CURRENT_DATE )`;
 
-// await function initDB(){
-//     try {
-//        await sql`CREATE TABLE IF NOT EXIST transactions(
-//        id SERIAL PRIMARY KEY ,
-//        user_id , 
-//        title ,
-//         amount ,
-//        )`
-//     } catch(){
+    console.log("DB Initialized successfully");
+  } catch (error) {
+    console.log("ERROR INITIALIZING DB", error);
+    process.exit(1);
+  }
+}
 
-//     }
-// }
+app.get("/api/transactions", async (req, res) => {
+  try {
+    const response = await sql`
+    SELECT * FROM transactions
+    `;
+    res.status(200).json(response);
+  } catch (error) {
+    console.log("Error getting Txc", error);
+    res.status(500).json({ message: "INTERNAL SERVER ERROR" });
+  }
+});
+
+app.get("/api/transactions/:user_id", async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    const user = await sql`
+     SELECT * FROM transactions WHERE user_id = ${user_id}
+     `;
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.log("Error getting USERID", error);
+    res.status(500).json({ message: "INTERNAL SERVER ERROR" });
+  }
+});
+
+app.post("/api/transactions", async (req, res) => {
+  try {
+    const { user_id, title, amount, category } = req.body;
+
+    if (!user_id || !title || !amount || !category) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+    const transaction = await sql`
+     INSERT INTO transactions(user_id,title,amount,category)
+     VALUES (${user_id}, ${title}, ${amount}, ${category})
+     RETURNING *
+     `;
+
+    res.status(201).json(transaction[0]);
+  } catch (error) {
+    console.log("ERROR CREATING TX", error);
+    res.status(500).json({ message: "INTERNAL SERVER ERROR" });
+  }
+});
+
+app.delete("/api/transactions/:id", async (req, res) => {
+  const { id } = req.params;
+
+  if (isNaN(parseInt(id))) {
+    res.status(400).json({ message: "Invalid Transaction ID" });
+    return;
+  }
+
+  try {
+    const result = await sql`
+     DELETE FROM transactions WHERE id = ${id} RETURNING *
+    `;
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Transaction ID npt found" });
+    }
+
+    res.status(200).json({ message: "Transaction Deleted Successfully" });
+  } catch (error) {
+    console.log("ERROR DELETING TRANSACTION", error);
+    res.status(400).json({ message: "invalid ID" });
+  }
+});
+
+app.get("/api/transactions/summary/:user_id", async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    if (isNaN(user_id)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+    
+    const balanceResult = await sql`
+     SELECT COALESCE(sum(amount), 0) as balance FROM transactions 
+     WHERE user_id = ${user_id}
+    `;
+    const incomeResult = await sql`
+     SELECT COALESCE(sum(amount), 0) as income FROM transactions 
+     WHERE user_id = ${user_id} AND amount > 0
+    `;
+    const expenseResult = await sql`
+     SELECT COALESCE(sum(amount), 0) as expenses FROM transactions
+     WHERE user_id = ${user_id} AND amount < 0
+    `;
+    // if(balanceResult.length === 0){
+    //   res.status(400).json({message:'Zero Balance'})
+    // }
+
+    res.status(200).json({
+      balance: balanceResult[0],
+      income: incomeResult[0],
+      expenses: expenseResult[0],
+    });
+  } catch (error) {
+    console.log("Error fetching summary", error);
+    res.status(500).json({ message: "INTERNAL SERVER ERROR" });
+  }
+});
 
 app.get("/", (req, res) => {
-  res.send('Working now')
+  res.send("Working now");
 });
 
-app.listen(5001, () => {
-  console.log("Server started at port 5001");
+initDB().then(() => {
+  app.listen(5001, () => {
+    console.log("Server started at port:", PORT);
+  });
 });
- 
