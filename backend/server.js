@@ -102,7 +102,7 @@ app.get("/api/transactions/summary/:user_id", async (req, res) => {
     if (isNaN(user_id)) {
       return res.status(400).json({ message: "Invalid user id" });
     }
-    
+
     const balanceResult = await sql`
      SELECT COALESCE(sum(amount), 0) as balance FROM transactions 
      WHERE user_id = ${user_id}
