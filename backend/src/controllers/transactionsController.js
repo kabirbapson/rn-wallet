@@ -1,32 +1,6 @@
-import express from "express";
-import dotenv from "dotenv";
-import { sql } from "./config/db.js";
-// import sql from './config/db'
+import { sql } from "../config/db.js";
 
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 5001;
-app.use(express.json());
-
-async function initDB() {
-  try {
-    await sql`CREATE TABLE IF NOT EXISTS transactions(
-       id SERIAL PRIMARY KEY,
-       user_id VARCHAR(255) NOT NULL,
-       title VARCHAR(255) NOT NULL,
-       amount decimal(10,2) NOT NULL,
-       category VARCHAR(255) NOT NULL,
-       created_at DATE NOT NULL DEFAULT CURRENT_DATE )`;
-
-    console.log("DB Initialized successfully");
-  } catch (error) {
-    console.log("ERROR INITIALIZING DB", error);
-    process.exit(1);
-  }
-}
-
-app.get("/api/transactions", async (req, res) => {
+export async function getTransactions(req, res) {
   try {
     const response = await sql`
     SELECT * FROM transactions
@@ -36,9 +10,9 @@ app.get("/api/transactions", async (req, res) => {
     console.log("Error getting Txc", error);
     res.status(500).json({ message: "INTERNAL SERVER ERROR" });
   }
-});
+}
 
-app.get("/api/transactions/:user_id", async (req, res) => {
+export async function getTransactionsByID(req, res) {
   try {
     const { user_id } = req.params;
 
@@ -51,9 +25,9 @@ app.get("/api/transactions/:user_id", async (req, res) => {
     console.log("Error getting USERID", error);
     res.status(500).json({ message: "INTERNAL SERVER ERROR" });
   }
-});
+}
 
-app.post("/api/transactions", async (req, res) => {
+export async function createTransactions(req, res) {
   try {
     const { user_id, title, amount, category } = req.body;
 
@@ -71,9 +45,9 @@ app.post("/api/transactions", async (req, res) => {
     console.log("ERROR CREATING TX", error);
     res.status(500).json({ message: "INTERNAL SERVER ERROR" });
   }
-});
+}
 
-app.delete("/api/transactions/:id", async (req, res) => {
+export async function deleteTransactionById(req, res) {
   const { id } = req.params;
 
   if (isNaN(parseInt(id))) {
@@ -94,9 +68,9 @@ app.delete("/api/transactions/:id", async (req, res) => {
     console.log("ERROR DELETING TRANSACTION", error);
     res.status(400).json({ message: "invalid ID" });
   }
-});
+}
 
-app.get("/api/transactions/summary/:user_id", async (req, res) => {
+export async function getSummaryByID(req, res) {
   try {
     const { user_id } = req.params;
     if (isNaN(user_id)) {
@@ -128,14 +102,4 @@ app.get("/api/transactions/summary/:user_id", async (req, res) => {
     console.log("Error fetching summary", error);
     res.status(500).json({ message: "INTERNAL SERVER ERROR" });
   }
-});
-
-app.get("/", (req, res) => {
-  res.send("Working now");
-});
-
-initDB().then(() => {
-  app.listen(5001, () => {
-    console.log("Server started at port:", PORT);
-  });
-});
+}
